@@ -50,7 +50,7 @@ page = st.sidebar.radio(
         "AI Finance Advisor",
         "Expense Classifier ML",
         "AI Financial Report",
-        "Global Stock Explorer"
+        "🌍 Global Stock Explorer"
     ]
 )
 
@@ -83,6 +83,13 @@ else:
     df = pd.read_csv("data/expenses.csv")
 
 df.columns = df.columns.str.strip().str.lower()
+
+required_columns = ["date", "amount", "category"]
+
+for col in required_columns:
+    if col not in df.columns:
+        st.error(f"Uploaded CSV must contain column: {col}")
+        st.stop()
 
 df["date"] = pd.to_datetime(df["date"])
 df["month"] = df["date"].dt.month_name()
@@ -150,6 +157,19 @@ if page == "Dashboard":
 
     st.divider()
 
+    # AI Insights
+
+    st.subheader("🧠 AI Spending Insights")
+
+    top_category = df.groupby("category")["amount"].sum().idxmax()
+    avg_expense = df["amount"].mean()
+
+    st.success(f"Top spending category: **{top_category}**")
+    st.info(f"Average transaction expense: **₹{round(avg_expense,2)}**")
+    st.warning(advice)
+
+    st.divider()
+
     # Financial Simulator
 
     st.subheader("⚙️ Financial Simulator")
@@ -175,9 +195,11 @@ if page == "Dashboard":
 
     st.plotly_chart(fig_alloc, use_container_width=True)
 
-# ---------------- STOCK MARKET ---------------- #
+    st.divider()
 
-elif page == "Global Stock Explorer":
+# ---------------- GLOBAL STOCK EXPLORER ---------------- #
+
+elif page == "🌍 Global Stock Explorer":
 
     st.header("🌍 Global Stock Market Explorer")
 
@@ -189,10 +211,9 @@ elif page == "Global Stock Explorer":
 
         data = stock.history(period="1y")
 
-        st.subheader(f"{ticker} Stock Price")
+        st.subheader(f"{ticker} Price Chart")
 
-        fig = px.line(data, x=data.index, y="Close", title=f"{ticker} Price Chart")
-
+        fig = px.line(data, x=data.index, y="Close", title=f"{ticker} Stock Price")
         fig.update_layout(template=plot_template)
 
         st.plotly_chart(fig, use_container_width=True)
@@ -201,19 +222,27 @@ elif page == "Global Stock Explorer":
 
         st.metric("Latest Price", f"${round(latest_price,2)}")
 
-        # Investment Simulator
-
         st.subheader("💰 Investment Simulator")
 
-        amount = st.number_input("Enter Investment Amount", min_value=100)
+        amount = st.number_input("Investment Amount", min_value=100)
 
         if amount:
 
             shares = amount / latest_price
 
-            st.success(f"You can buy approx **{round(shares,2)} shares** of {ticker}")
+            st.success(f"You can buy approx **{round(shares,2)} shares**")
 
-# ---------------- CHATBOT ---------------- #
+# ---------------- OTHER PAGES ---------------- #
+
+elif page == "Expense Intelligence":
+
+    st.header("📊 Expense Breakdown")
+    category_expense = df.groupby("category")["amount"].sum()
+    st.bar_chart(category_expense)
+
+elif page == "Portfolio Analyzer":
+
+    import pages.portfolio_analyzer
 
 elif page == "AI Chatbot":
 
@@ -225,8 +254,6 @@ elif page == "AI Chatbot":
         answer = finance_chatbot(user_question)
         st.success(answer)
 
-# ---------------- FINANCE ADVISOR ---------------- #
-
 elif page == "AI Finance Advisor":
 
     st.header("🧠 AI Personal Finance Advisor")
@@ -237,8 +264,6 @@ elif page == "AI Finance Advisor":
         advice = ai_finance_advisor(question)
         st.success(advice)
 
-# ---------------- EXPENSE CLASSIFIER ---------------- #
-
 elif page == "Expense Classifier ML":
 
     st.header("🤖 Expense Category Predictor")
@@ -248,8 +273,6 @@ elif page == "Expense Classifier ML":
     if description:
         category = predict_category(description)
         st.success(f"Predicted Category: {category}")
-
-# ---------------- REPORT GENERATOR ---------------- #
 
 elif page == "AI Financial Report":
 
@@ -263,7 +286,7 @@ elif page == "AI Financial Report":
 
         pdf_path = generate_report(name, company, email)
 
-        st.success(f"Report generated for {name}")
+        st.success(f"Report generated for {name} ({company})")
 
         with open(pdf_path, "rb") as file:
 
