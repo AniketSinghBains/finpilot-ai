@@ -10,13 +10,15 @@ from utils.financial_report import generate_report
 
 st.set_page_config(page_title="FinPilot AI", layout="wide")
 
-# ---------------- DARK MODE FIX ---------------- #
+# ---------------- DARK MODE ---------------- #
 
 if "dark_mode" not in st.session_state:
     st.session_state.dark_mode = False
 
 dark_toggle = st.sidebar.toggle("🌙 Dark Mode", value=st.session_state.dark_mode)
 st.session_state.dark_mode = dark_toggle
+
+plot_template = "plotly_dark" if st.session_state.dark_mode else "plotly"
 
 if st.session_state.dark_mode:
     st.markdown("""
@@ -122,8 +124,7 @@ if page == "Dashboard":
     b2.metric("Spent", f"₹{spent}")
     b3.metric("Remaining", f"₹{remaining}")
 
-    if budget > 0:
-        st.progress(min(spent / budget, 1.0))
+    st.progress(min(spent / budget, 1.0))
 
     st.divider()
 
@@ -142,11 +143,13 @@ if page == "Dashboard":
 
     with col4:
         fig = px.pie(df, names="category", values="amount", title="Expense Distribution")
+        fig.update_layout(template=plot_template)
         st.plotly_chart(fig, use_container_width=True)
 
     with col5:
         monthly_expense = df.groupby("month")["amount"].sum().reset_index()
         fig2 = px.line(monthly_expense, x="month", y="amount", markers=True, title="Monthly Expense Trend")
+        fig2.update_layout(template=plot_template)
         st.plotly_chart(fig2, use_container_width=True)
 
     st.divider()
@@ -179,6 +182,71 @@ if page == "Dashboard":
 
     st.metric("💰 Estimated Savings", f"₹{savings}")
 
+    # ---------- Financial Allocation Chart ---------- #
+
+    allocation_data = pd.DataFrame({
+        "Category": ["Rent", "Food", "Shopping", "Investment", "Savings"],
+        "Amount": [rent, food, shopping, investment, max(savings,0)]
+    })
+
+    fig_alloc = px.pie(
+        allocation_data,
+        names="Category",
+        values="Amount",
+        title="Monthly Financial Allocation",
+        hole=0.4
+    )
+
+    fig_alloc.update_layout(template=plot_template)
+
+    st.plotly_chart(fig_alloc, use_container_width=True)
+
+    # ---------- Savings Health Indicator ---------- #
+
+    st.subheader("💡 Savings Health Indicator")
+
+    saving_rate = (savings / income) * 100 if income > 0 else 0
+
+    st.metric("Saving Rate", f"{round(saving_rate,1)}%")
+    st.progress(min(saving_rate/100,1.0))
+
+    if saving_rate >= 30:
+        st.success("Excellent savings habit 🚀")
+    elif saving_rate >= 15:
+        st.info("Good savings habit 👍")
+    else:
+        st.warning("Try increasing savings ⚠️")
+
+    # ---------- Investment Growth Projection ---------- #
+
+    st.subheader("📈 5-Year Investment Growth Projection")
+
+    years = list(range(1,6))
+    growth = []
+
+    current = 0
+
+    for y in years:
+        current = current + investment*12
+        current = current * 1.10
+        growth.append(current)
+
+    growth_df = pd.DataFrame({
+        "Year": years,
+        "Portfolio Value": growth
+    })
+
+    fig_growth = px.line(
+        growth_df,
+        x="Year",
+        y="Portfolio Value",
+        markers=True
+    )
+
+    fig_growth.update_layout(template=plot_template)
+
+    st.plotly_chart(fig_growth, use_container_width=True)
+
     st.divider()
 
     # ---------------- TOP EXPENSES ---------------- #
@@ -210,22 +278,17 @@ if page == "Dashboard":
     st.subheader("📊 Expense Dataset Preview")
     st.dataframe(df.head(10), use_container_width=True)
 
-# ---------------- EXPENSE INTELLIGENCE ---------------- #
+# ---------------- OTHER PAGES ---------------- #
 
 elif page == "Expense Intelligence":
 
     st.header("📊 Expense Breakdown")
-
     category_expense = df.groupby("category")["amount"].sum()
     st.bar_chart(category_expense)
-
-# ---------------- PORTFOLIO ANALYZER ---------------- #
 
 elif page == "Portfolio Analyzer":
 
     import pages.portfolio_analyzer
-
-# ---------------- AI CHATBOT ---------------- #
 
 elif page == "AI Chatbot":
 
@@ -237,8 +300,6 @@ elif page == "AI Chatbot":
         answer = finance_chatbot(user_question)
         st.success(answer)
 
-# ---------------- AI FINANCE ADVISOR ---------------- #
-
 elif page == "AI Finance Advisor":
 
     st.header("🧠 AI Personal Finance Advisor")
@@ -248,8 +309,6 @@ elif page == "AI Finance Advisor":
     if question:
         advice = ai_finance_advisor(question)
         st.success(advice)
-
-# ---------------- EXPENSE CLASSIFIER ---------------- #
 
 elif page == "Expense Classifier ML":
 
@@ -261,13 +320,9 @@ elif page == "Expense Classifier ML":
         category = predict_category(description)
         st.success(f"Predicted Category: {category}")
 
-# ---------------- REPORT GENERATOR ---------------- #
-
 elif page == "AI Financial Report":
 
     st.header("📊 AI Financial Report Generator")
-
-    st.subheader("Enter your details")
 
     name = st.text_input("Your Name")
     company = st.text_input("Company Name")
