@@ -159,10 +159,32 @@ if page == "Dashboard":
 
     st.divider()
 
-    # Dataset Table (RESTORED)
+    # ---------------- DATASET EXPLORER ---------------- #
 
-    st.subheader("📊 Expense Dataset Preview")
-    st.dataframe(df.sort_values("date", ascending=False), use_container_width=True)
+    st.header("📊 Expense Dataset Explorer")
+
+    search = st.text_input("🔍 Search Category")
+
+    if search:
+        filtered_df = df[df["category"].str.contains(search, case=False)]
+    else:
+        filtered_df = df
+
+    st.dataframe(
+        filtered_df.sort_values("date", ascending=False),
+        use_container_width=True
+    )
+
+    st.caption(f"Total Records: {len(filtered_df)}")
+
+    csv = filtered_df.to_csv(index=False).encode('utf-8')
+
+    st.download_button(
+        "⬇ Download Filtered Dataset",
+        csv,
+        "filtered_expenses.csv",
+        "text/csv"
+    )
 
 # ---------------- GLOBAL STOCK EXPLORER ---------------- #
 
@@ -175,8 +197,6 @@ elif page == "🌍 Global Stock Explorer":
     if ticker:
 
         data = yf.download(ticker, period="6mo")
-
-        # Candlestick Chart
 
         fig = go.Figure(data=[go.Candlestick(
             x=data.index,
@@ -194,8 +214,6 @@ elif page == "🌍 Global Stock Explorer":
 
         st.metric("Latest Price", f"${round(latest_price,2)}")
 
-        # AI BUY SELL SIGNAL
-
         data["SMA20"] = data["Close"].rolling(20).mean()
         data["SMA50"] = data["Close"].rolling(50).mean()
 
@@ -209,8 +227,6 @@ elif page == "🌍 Global Stock Explorer":
         else:
             st.error("📉 SELL Signal")
 
-        # Investment Simulator
-
         st.subheader("💰 Investment Simulator")
 
         amount = st.number_input("Investment Amount", min_value=100)
@@ -218,8 +234,6 @@ elif page == "🌍 Global Stock Explorer":
         if amount:
             shares = amount / latest_price
             st.success(f"You can buy approx **{round(shares,2)} shares**")
-
-    # WORLD MAP
 
     st.subheader("🌍 Global Market Map")
 
