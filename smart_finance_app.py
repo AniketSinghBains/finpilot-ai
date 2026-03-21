@@ -7,6 +7,7 @@ from utils.financial_health import calculate_financial_health
 from ai.finance_advisor import ai_finance_advisor
 from utils.expense_classifier import predict_category
 from utils.financial_report import generate_report
+from utils.stock_data import get_stock_data
 
 st.set_page_config(page_title="FinPilot AI", layout="wide")
 
