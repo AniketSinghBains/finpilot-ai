@@ -1,13 +1,14 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import yfinance as yf
+
 from utils.predict_expense import predict_next_expense
 from ai.chatbot import finance_chatbot
 from utils.financial_health import calculate_financial_health
 from ai.finance_advisor import ai_finance_advisor
 from utils.expense_classifier import predict_category
 from utils.financial_report import generate_report
-from utils.stock_data import get_stock_data
 
 st.set_page_config(page_title="FinPilot AI", layout="wide")
 
@@ -48,7 +49,8 @@ page = st.sidebar.radio(
         "AI Chatbot",
         "AI Finance Advisor",
         "Expense Classifier ML",
-        "AI Financial Report"
+        "AI Financial Report",
+        "Global Stock Explorer"
     ]
 )
 
@@ -82,13 +84,6 @@ else:
 
 df.columns = df.columns.str.strip().str.lower()
 
-required_columns = ["date", "amount", "category"]
-
-for col in required_columns:
-    if col not in df.columns:
-        st.error(f"Uploaded CSV must contain column: {col}")
-        st.stop()
-
 df["date"] = pd.to_datetime(df["date"])
 df["month"] = df["date"].dt.month_name()
 
@@ -112,7 +107,7 @@ if page == "Dashboard":
 
     st.divider()
 
-    # ---------------- BUDGET TRACKER ---------------- #
+    # Budget Tracker
 
     st.subheader("💰 Budget Tracker")
 
@@ -129,7 +124,7 @@ if page == "Dashboard":
 
     st.divider()
 
-    # ---------------- NET WORTH ---------------- #
+    # Net Worth
 
     net_worth = assets - spent
 
@@ -138,7 +133,7 @@ if page == "Dashboard":
 
     st.divider()
 
-    # ---------------- CHARTS ---------------- #
+    # Charts
 
     col4, col5 = st.columns(2)
 
@@ -149,26 +144,13 @@ if page == "Dashboard":
 
     with col5:
         monthly_expense = df.groupby("month")["amount"].sum().reset_index()
-        fig2 = px.line(monthly_expense, x="month", y="amount", markers=True, title="Monthly Expense Trend")
+        fig2 = px.line(monthly_expense, x="month", y="amount", markers=True)
         fig2.update_layout(template=plot_template)
         st.plotly_chart(fig2, use_container_width=True)
 
     st.divider()
 
-    # ---------------- AI INSIGHTS ---------------- #
-
-    st.subheader("🧠 AI Spending Insights")
-
-    top_category = df.groupby("category")["amount"].sum().idxmax()
-    avg_expense = df["amount"].mean()
-
-    st.success(f"Top spending category: **{top_category}**")
-    st.info(f"Average transaction expense: **₹{round(avg_expense,2)}**")
-    st.warning(advice)
-
-    st.divider()
-
-    # ---------------- FINANCIAL SIMULATOR ---------------- #
+    # Financial Simulator
 
     st.subheader("⚙️ Financial Simulator")
 
@@ -183,113 +165,55 @@ if page == "Dashboard":
 
     st.metric("💰 Estimated Savings", f"₹{savings}")
 
-    # ---------- Financial Allocation Chart ---------- #
-
     allocation_data = pd.DataFrame({
         "Category": ["Rent", "Food", "Shopping", "Investment", "Savings"],
         "Amount": [rent, food, shopping, investment, max(savings,0)]
     })
 
-    fig_alloc = px.pie(
-        allocation_data,
-        names="Category",
-        values="Amount",
-        title="Monthly Financial Allocation",
-        hole=0.4
-    )
-
+    fig_alloc = px.pie(allocation_data, names="Category", values="Amount", hole=0.4)
     fig_alloc.update_layout(template=plot_template)
 
     st.plotly_chart(fig_alloc, use_container_width=True)
 
-    # ---------- Savings Health Indicator ---------- #
+# ---------------- STOCK MARKET ---------------- #
 
-    st.subheader("💡 Savings Health Indicator")
+elif page == "Global Stock Explorer":
 
-    saving_rate = (savings / income) * 100 if income > 0 else 0
+    st.header("🌍 Global Stock Market Explorer")
 
-    st.metric("Saving Rate", f"{round(saving_rate,1)}%")
-    st.progress(min(saving_rate/100,1.0))
+    ticker = st.text_input("Enter Stock Ticker (AAPL, TSLA, INFY, RELIANCE.NS)")
 
-    if saving_rate >= 30:
-        st.success("Excellent savings habit 🚀")
-    elif saving_rate >= 15:
-        st.info("Good savings habit 👍")
-    else:
-        st.warning("Try increasing savings ⚠️")
+    if ticker:
 
-    # ---------- Investment Growth Projection ---------- #
+        stock = yf.Ticker(ticker)
 
-    st.subheader("📈 5-Year Investment Growth Projection")
+        data = stock.history(period="1y")
 
-    years = list(range(1,6))
-    growth = []
+        st.subheader(f"{ticker} Stock Price")
 
-    current = 0
+        fig = px.line(data, x=data.index, y="Close", title=f"{ticker} Price Chart")
 
-    for y in years:
-        current = current + investment*12
-        current = current * 1.10
-        growth.append(current)
+        fig.update_layout(template=plot_template)
 
-    growth_df = pd.DataFrame({
-        "Year": years,
-        "Portfolio Value": growth
-    })
+        st.plotly_chart(fig, use_container_width=True)
 
-    fig_growth = px.line(
-        growth_df,
-        x="Year",
-        y="Portfolio Value",
-        markers=True
-    )
+        latest_price = data["Close"].iloc[-1]
 
-    fig_growth.update_layout(template=plot_template)
+        st.metric("Latest Price", f"${round(latest_price,2)}")
 
-    st.plotly_chart(fig_growth, use_container_width=True)
+        # Investment Simulator
 
-    st.divider()
+        st.subheader("💰 Investment Simulator")
 
-    # ---------------- TOP EXPENSES ---------------- #
+        amount = st.number_input("Enter Investment Amount", min_value=100)
 
-    st.subheader("💸 Top 5 Expenses")
+        if amount:
 
-    top_exp = df.sort_values("amount", ascending=False).head(5)
-    st.dataframe(top_exp, use_container_width=True)
+            shares = amount / latest_price
 
-    st.divider()
+            st.success(f"You can buy approx **{round(shares,2)} shares** of {ticker}")
 
-    # ---------------- HEATMAP ---------------- #
-
-    st.subheader("🔥 Expense Heatmap")
-
-    heatmap_data = df.pivot_table(
-        values="amount",
-        index="category",
-        columns="month",
-        aggfunc="sum"
-    )
-
-    st.dataframe(heatmap_data)
-
-    st.divider()
-
-    # ---------------- DATASET ---------------- #
-
-    st.subheader("📊 Expense Dataset Preview")
-    st.dataframe(df.head(10), use_container_width=True)
-
-# ---------------- OTHER PAGES ---------------- #
-
-elif page == "Expense Intelligence":
-
-    st.header("📊 Expense Breakdown")
-    category_expense = df.groupby("category")["amount"].sum()
-    st.bar_chart(category_expense)
-
-elif page == "Portfolio Analyzer":
-
-    import pages.portfolio_analyzer
+# ---------------- CHATBOT ---------------- #
 
 elif page == "AI Chatbot":
 
@@ -301,6 +225,8 @@ elif page == "AI Chatbot":
         answer = finance_chatbot(user_question)
         st.success(answer)
 
+# ---------------- FINANCE ADVISOR ---------------- #
+
 elif page == "AI Finance Advisor":
 
     st.header("🧠 AI Personal Finance Advisor")
@@ -311,6 +237,8 @@ elif page == "AI Finance Advisor":
         advice = ai_finance_advisor(question)
         st.success(advice)
 
+# ---------------- EXPENSE CLASSIFIER ---------------- #
+
 elif page == "Expense Classifier ML":
 
     st.header("🤖 Expense Category Predictor")
@@ -320,6 +248,8 @@ elif page == "Expense Classifier ML":
     if description:
         category = predict_category(description)
         st.success(f"Predicted Category: {category}")
+
+# ---------------- REPORT GENERATOR ---------------- #
 
 elif page == "AI Financial Report":
 
@@ -333,7 +263,7 @@ elif page == "AI Financial Report":
 
         pdf_path = generate_report(name, company, email)
 
-        st.success(f"Report generated for {name} ({company})")
+        st.success(f"Report generated for {name}")
 
         with open(pdf_path, "rb") as file:
 
