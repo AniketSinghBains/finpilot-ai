@@ -24,16 +24,6 @@ st.session_state.dark_mode = dark_toggle
 
 plot_template = "plotly_dark" if st.session_state.dark_mode else "plotly"
 
-if st.session_state.dark_mode:
-    st.markdown("""
-    <style>
-    .stApp {
-        background-color:#0E1117;
-        color:white;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
 # ---------------- TITLE ---------------- #
 
 st.title("🚀 FinPilot AI — Personal Finance Intelligence")
@@ -47,6 +37,7 @@ page = st.sidebar.radio(
     [
         "Dashboard",
         "Expense Intelligence",
+        "📊 Dataset Explorer",
         "Portfolio Analyzer",
         "AI Chatbot",
         "AI Finance Advisor",
@@ -142,12 +133,10 @@ if page == "Dashboard":
 
     st.divider()
 
-    # Charts
-
     col4, col5 = st.columns(2)
 
     with col4:
-        fig = px.pie(df, names="category", values="amount", title="Expense Distribution")
+        fig = px.pie(df, names="category", values="amount")
         fig.update_layout(template=plot_template)
         st.plotly_chart(fig, use_container_width=True)
 
@@ -157,27 +146,40 @@ if page == "Dashboard":
         fig2.update_layout(template=plot_template)
         st.plotly_chart(fig2, use_container_width=True)
 
-    st.divider()
+# ---------------- DATASET EXPLORER ---------------- #
 
-    # ---------------- DATASET EXPLORER ---------------- #
+elif page == "📊 Dataset Explorer":
 
     st.header("📊 Expense Dataset Explorer")
 
-    search = st.text_input("🔍 Search Category")
+    col1, col2 = st.columns(2)
+
+    with col1:
+        search = st.text_input("🔍 Search Category")
+
+    with col2:
+        sort_order = st.selectbox(
+            "Sort By Date",
+            ["Newest First", "Oldest First"]
+        )
+
+    filtered_df = df
 
     if search:
-        filtered_df = df[df["category"].str.contains(search, case=False)]
+        filtered_df = filtered_df[
+            filtered_df["category"].str.contains(search, case=False)
+        ]
+
+    if sort_order == "Newest First":
+        filtered_df = filtered_df.sort_values("date", ascending=False)
     else:
-        filtered_df = df
+        filtered_df = filtered_df.sort_values("date", ascending=True)
 
-    st.dataframe(
-        filtered_df.sort_values("date", ascending=False),
-        use_container_width=True
-    )
+    st.dataframe(filtered_df, use_container_width=True)
 
-    st.caption(f"Total Records: {len(filtered_df)}")
+    st.success(f"Total Records: {len(filtered_df)}")
 
-    csv = filtered_df.to_csv(index=False).encode('utf-8')
+    csv = filtered_df.to_csv(index=False).encode("utf-8")
 
     st.download_button(
         "⬇ Download Filtered Dataset",
@@ -271,7 +273,6 @@ elif page == "Expense Intelligence":
     st.bar_chart(category_expense)
 
 elif page == "Portfolio Analyzer":
-
     import pages.portfolio_analyzer
 
 elif page == "AI Chatbot":
