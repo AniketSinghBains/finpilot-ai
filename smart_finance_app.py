@@ -10,43 +10,27 @@ from utils.financial_report import generate_report
 
 st.set_page_config(page_title="FinPilot AI", layout="wide")
 
-# ---------------- THEME TOGGLE ---------------- #
+# ---------------- DARK MODE FIX ---------------- #
 
-theme = st.sidebar.toggle("🌗 Dark / Light Mode")
+if "dark_mode" not in st.session_state:
+    st.session_state.dark_mode = False
 
-if theme:
-    bg_color = "#0e1117"
-    text_color = "white"
-else:
-    bg_color = "white"
-    text_color = "black"
+dark_toggle = st.sidebar.toggle("🌙 Dark Mode", value=st.session_state.dark_mode)
+st.session_state.dark_mode = dark_toggle
 
-# ---------------- CUSTOM CSS ---------------- #
-
-st.markdown(f"""
-<style>
-body {{
-background-color:{bg_color};
-color:{text_color};
-}}
-
-.big-font {{
-font-size:30px !important;
-font-weight:700;
-}}
-
-.metric-card {{
-background-color:#1f2c38;
-padding:20px;
-border-radius:10px;
-text-align:center;
-}}
-</style>
-""", unsafe_allow_html=True)
+if st.session_state.dark_mode:
+    st.markdown("""
+    <style>
+    .stApp {
+        background-color:#0E1117;
+        color:white;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 # ---------------- TITLE ---------------- #
 
-st.markdown('<p class="big-font">🚀 FinPilot AI — Personal Finance Intelligence</p>', unsafe_allow_html=True)
+st.title("🚀 FinPilot AI — Personal Finance Intelligence")
 
 # ---------------- SIDEBAR ---------------- #
 
@@ -81,7 +65,7 @@ st.sidebar.download_button(
     "sample_expenses.csv"
 )
 
-# ---------------- SLIDER INPUTS ---------------- #
+# ---------------- USER SETTINGS ---------------- #
 
 budget = st.sidebar.slider("💰 Monthly Budget", 0, 100000, 20000)
 assets = st.sidebar.slider("🏦 Total Assets", 0, 2000000, 500000)
@@ -148,7 +132,6 @@ if page == "Dashboard":
     net_worth = assets - spent
 
     st.subheader("📈 Net Worth Tracker")
-
     st.metric("Your Net Worth", f"₹{net_worth}")
 
     st.divider()
@@ -181,6 +164,23 @@ if page == "Dashboard":
 
     st.divider()
 
+    # ---------------- FINANCIAL SIMULATOR ---------------- #
+
+    st.subheader("⚙️ Financial Simulator")
+
+    income = st.slider("Monthly Income", 10000, 500000, 50000)
+    rent = st.slider("Rent / EMI", 0, 100000, 10000)
+    food = st.slider("Food Expense", 0, 50000, 8000)
+    shopping = st.slider("Shopping Expense", 0, 50000, 5000)
+    investment = st.slider("Monthly Investment", 0, 100000, 10000)
+
+    total_spending = rent + food + shopping
+    savings = income - total_spending - investment
+
+    st.metric("💰 Estimated Savings", f"₹{savings}")
+
+    st.divider()
+
     # ---------------- TOP EXPENSES ---------------- #
 
     st.subheader("💸 Top 5 Expenses")
@@ -208,7 +208,6 @@ if page == "Dashboard":
     # ---------------- DATASET ---------------- #
 
     st.subheader("📊 Expense Dataset Preview")
-
     st.dataframe(df.head(10), use_container_width=True)
 
 # ---------------- EXPENSE INTELLIGENCE ---------------- #
@@ -218,7 +217,6 @@ elif page == "Expense Intelligence":
     st.header("📊 Expense Breakdown")
 
     category_expense = df.groupby("category")["amount"].sum()
-
     st.bar_chart(category_expense)
 
 # ---------------- PORTFOLIO ANALYZER ---------------- #
@@ -277,7 +275,7 @@ elif page == "AI Financial Report":
 
     if st.button("Generate Report"):
 
-        pdf_path = generate_report()
+        pdf_path = generate_report(name, company, email)
 
         st.success(f"Report generated for {name} ({company})")
 
