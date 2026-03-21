@@ -53,9 +53,15 @@ page = st.sidebar.radio(
     ]
 )
 
-# ---------------- LOAD DATA ---------------- #
+# ---------------- CSV UPLOAD FEATURE ---------------- #
 
-df = pd.read_csv("data/expenses.csv")
+uploaded_file = st.sidebar.file_uploader("Upload Your Expense CSV", type=["csv"])
+
+if uploaded_file is not None:
+    df = pd.read_csv(uploaded_file)
+else:
+    df = pd.read_csv("data/expenses.csv")
+
 df.columns = df.columns.str.strip()
 
 df["date"] = pd.to_datetime(df["date"])
