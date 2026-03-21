@@ -6,7 +6,7 @@ from ai.chatbot import finance_chatbot
 from utils.financial_health import calculate_financial_health
 from ai.finance_advisor import ai_finance_advisor
 from utils.expense_classifier import predict_category
-from utils.financial_report import generate_report   # STEP 4: Import report generator
+from utils.financial_report import generate_report
 
 st.set_page_config(page_title="FinPilot AI", layout="wide")
 
@@ -49,7 +49,7 @@ page = st.sidebar.radio(
         "AI Chatbot",
         "AI Finance Advisor",
         "Expense Classifier ML",
-        "AI Financial Report"   # STEP 5: New Page Added
+        "AI Financial Report"
     ]
 )
 
@@ -57,14 +57,41 @@ page = st.sidebar.radio(
 
 uploaded_file = st.sidebar.file_uploader("Upload Your Expense CSV", type=["csv"])
 
+# 🔽 SAMPLE CSV DOWNLOAD
+sample_data = pd.DataFrame({
+    "date": ["2024-01-01", "2024-01-02"],
+    "amount": [500, 1200],
+    "category": ["Food", "Shopping"]
+})
+
+st.sidebar.download_button(
+    "📥 Download Sample CSV",
+    sample_data.to_csv(index=False),
+    "sample_expenses.csv"
+)
+
+# ---------------- LOAD DATA ---------------- #
+
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
 else:
     df = pd.read_csv("data/expenses.csv")
 
-df.columns = df.columns.str.strip()
+# Clean column names
+df.columns = df.columns.str.strip().str.lower()
 
+# Validate required columns
+required_columns = ["date", "amount", "category"]
+
+for col in required_columns:
+    if col not in df.columns:
+        st.error(f"Uploaded CSV must contain column: {col}")
+        st.stop()
+
+# Convert date column
 df["date"] = pd.to_datetime(df["date"])
+
+# Create month column
 df["month"] = df["date"].dt.month_name()
 
 # ---------------- DASHBOARD ---------------- #
@@ -209,7 +236,7 @@ elif page == "Expense Classifier ML":
 
 # ---------------- AI FINANCIAL REPORT ---------------- #
 
-elif page == "AI Financial Report":   # STEP 6: Report Generator Page
+elif page == "AI Financial Report":
 
     st.header("📊 AI Financial Report Generator")
 
