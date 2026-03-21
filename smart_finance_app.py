@@ -1,7 +1,9 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import yfinance as yf
+import pydeck as pdk
 
 from utils.predict_expense import predict_next_expense
 from ai.chatbot import finance_chatbot
@@ -157,45 +159,10 @@ if page == "Dashboard":
 
     st.divider()
 
-    # AI Insights
+    # Dataset Table (RESTORED)
 
-    st.subheader("🧠 AI Spending Insights")
-
-    top_category = df.groupby("category")["amount"].sum().idxmax()
-    avg_expense = df["amount"].mean()
-
-    st.success(f"Top spending category: **{top_category}**")
-    st.info(f"Average transaction expense: **₹{round(avg_expense,2)}**")
-    st.warning(advice)
-
-    st.divider()
-
-    # Financial Simulator
-
-    st.subheader("⚙️ Financial Simulator")
-
-    income = st.slider("Monthly Income", 10000, 500000, 50000)
-    rent = st.slider("Rent / EMI", 0, 100000, 10000)
-    food = st.slider("Food Expense", 0, 50000, 8000)
-    shopping = st.slider("Shopping Expense", 0, 50000, 5000)
-    investment = st.slider("Monthly Investment", 0, 100000, 10000)
-
-    total_spending = rent + food + shopping
-    savings = income - total_spending - investment
-
-    st.metric("💰 Estimated Savings", f"₹{savings}")
-
-    allocation_data = pd.DataFrame({
-        "Category": ["Rent", "Food", "Shopping", "Investment", "Savings"],
-        "Amount": [rent, food, shopping, investment, max(savings,0)]
-    })
-
-    fig_alloc = px.pie(allocation_data, names="Category", values="Amount", hole=0.4)
-    fig_alloc.update_layout(template=plot_template)
-
-    st.plotly_chart(fig_alloc, use_container_width=True)
-
-    st.divider()
+    st.subheader("📊 Expense Dataset Preview")
+    st.dataframe(df.sort_values("date", ascending=False), use_container_width=True)
 
 # ---------------- GLOBAL STOCK EXPLORER ---------------- #
 
@@ -207,14 +174,19 @@ elif page == "🌍 Global Stock Explorer":
 
     if ticker:
 
-        stock = yf.Ticker(ticker)
+        data = yf.download(ticker, period="6mo")
 
-        data = stock.history(period="1y")
+        # Candlestick Chart
 
-        st.subheader(f"{ticker} Price Chart")
+        fig = go.Figure(data=[go.Candlestick(
+            x=data.index,
+            open=data["Open"],
+            high=data["High"],
+            low=data["Low"],
+            close=data["Close"]
+        )])
 
-        fig = px.line(data, x=data.index, y="Close", title=f"{ticker} Stock Price")
-        fig.update_layout(template=plot_template)
+        fig.update_layout(title=f"{ticker} Trading Chart", template=plot_template)
 
         st.plotly_chart(fig, use_container_width=True)
 
@@ -222,15 +194,59 @@ elif page == "🌍 Global Stock Explorer":
 
         st.metric("Latest Price", f"${round(latest_price,2)}")
 
+        # AI BUY SELL SIGNAL
+
+        data["SMA20"] = data["Close"].rolling(20).mean()
+        data["SMA50"] = data["Close"].rolling(50).mean()
+
+        short = data["SMA20"].iloc[-1]
+        long = data["SMA50"].iloc[-1]
+
+        st.subheader("🤖 AI Trading Signal")
+
+        if short > long:
+            st.success("📈 BUY Signal")
+        else:
+            st.error("📉 SELL Signal")
+
+        # Investment Simulator
+
         st.subheader("💰 Investment Simulator")
 
         amount = st.number_input("Investment Amount", min_value=100)
 
         if amount:
-
             shares = amount / latest_price
-
             st.success(f"You can buy approx **{round(shares,2)} shares**")
+
+    # WORLD MAP
+
+    st.subheader("🌍 Global Market Map")
+
+    map_data = pd.DataFrame({
+        "company": ["Apple", "Tesla", "Infosys", "Toyota"],
+        "lat": [37.3349, 30.2672, 12.9716, 35.6762],
+        "lon": [-122.0090, -97.7431, 77.5946, 139.6503]
+    })
+
+    layer = pdk.Layer(
+        "ScatterplotLayer",
+        data=map_data,
+        get_position='[lon, lat]',
+        get_radius=50000,
+        get_fill_color=[200, 30, 0, 160],
+    )
+
+    view_state = pdk.ViewState(
+        latitude=20,
+        longitude=0,
+        zoom=1,
+    )
+
+    st.pydeck_chart(pdk.Deck(
+        layers=[layer],
+        initial_view_state=view_state
+    ))
 
 # ---------------- OTHER PAGES ---------------- #
 
