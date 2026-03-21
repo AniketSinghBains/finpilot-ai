@@ -15,7 +15,7 @@ st.set_page_config(page_title="FinPilot AI", layout="wide")
 st.markdown("""
 <style>
 .big-font {
-    font-size:28px !important;
+    font-size:30px !important;
     font-weight:700;
 }
 
@@ -57,7 +57,6 @@ page = st.sidebar.radio(
 
 uploaded_file = st.sidebar.file_uploader("Upload Your Expense CSV", type=["csv"])
 
-# 🔽 SAMPLE CSV DOWNLOAD
 sample_data = pd.DataFrame({
     "date": ["2024-01-01", "2024-01-02"],
     "amount": [500, 1200],
@@ -70,6 +69,12 @@ st.sidebar.download_button(
     "sample_expenses.csv"
 )
 
+# ---------------- EXTRA SIDEBAR FEATURES ---------------- #
+
+budget = st.sidebar.number_input("💰 Set Monthly Budget", value=20000)
+
+assets = st.sidebar.number_input("🏦 Enter Total Assets", value=500000)
+
 # ---------------- LOAD DATA ---------------- #
 
 if uploaded_file is not None:
@@ -77,10 +82,8 @@ if uploaded_file is not None:
 else:
     df = pd.read_csv("data/expenses.csv")
 
-# Clean column names
 df.columns = df.columns.str.strip().str.lower()
 
-# Validate required columns
 required_columns = ["date", "amount", "category"]
 
 for col in required_columns:
@@ -88,10 +91,8 @@ for col in required_columns:
         st.error(f"Uploaded CSV must contain column: {col}")
         st.stop()
 
-# Convert date column
 df["date"] = pd.to_datetime(df["date"])
 
-# Create month column
 df["month"] = df["date"].dt.month_name()
 
 # ---------------- DASHBOARD ---------------- #
@@ -116,6 +117,33 @@ if page == "Dashboard":
         st.metric("🧠 Financial Health", f"{score}/100")
 
     st.divider()
+
+    # ---------------- BUDGET TRACKER ---------------- #
+
+    st.subheader("💰 Budget Tracker")
+
+    spent = df["amount"].sum()
+    remaining = budget - spent
+
+    b1, b2, b3 = st.columns(3)
+
+    b1.metric("Budget", f"₹{budget}")
+    b2.metric("Spent", f"₹{spent}")
+    b3.metric("Remaining", f"₹{remaining}")
+
+    st.divider()
+
+    # ---------------- NET WORTH ---------------- #
+
+    net_worth = assets - spent
+
+    st.subheader("📈 Net Worth Tracker")
+
+    st.metric("Your Net Worth", f"₹{net_worth}")
+
+    st.divider()
+
+    # ---------------- CHARTS ---------------- #
 
     col4, col5 = st.columns(2)
 
@@ -146,24 +174,50 @@ if page == "Dashboard":
 
     st.divider()
 
-    st.subheader("📊 Financial Insights")
+    # ---------------- AI SPENDING INSIGHTS ---------------- #
+
+    st.subheader("🧠 AI Spending Insights")
 
     top_category = df.groupby("category")["amount"].sum().idxmax()
     avg_expense = df["amount"].mean()
 
-    st.info(f"Highest spending category: **{top_category}**")
+    st.success(f"Top spending category: **{top_category}**")
     st.info(f"Average transaction expense: **₹{round(avg_expense,2)}**")
 
     st.warning(advice)
 
-    # ---------------- DATASET PREVIEW ---------------- #
+    st.divider()
+
+    # ---------------- TOP EXPENSES ---------------- #
+
+    st.subheader("💸 Top 5 Expenses")
+
+    top_exp = df.sort_values("amount", ascending=False).head(5)
+
+    st.dataframe(top_exp, use_container_width=True)
 
     st.divider()
+
+    # ---------------- EXPENSE HEATMAP ---------------- #
+
+    st.subheader("🔥 Expense Heatmap")
+
+    heatmap_data = df.pivot_table(
+        values="amount",
+        index="category",
+        columns="month",
+        aggfunc="sum"
+    )
+
+    st.dataframe(heatmap_data)
+
+    st.divider()
+
+    # ---------------- DATASET PREVIEW ---------------- #
 
     st.subheader("📊 Expense Dataset Preview")
 
     st.dataframe(df.head(10), use_container_width=True)
-
 
 # ---------------- EXPENSE INTELLIGENCE ---------------- #
 
@@ -175,13 +229,11 @@ elif page == "Expense Intelligence":
 
     st.bar_chart(category_expense)
 
-
 # ---------------- PORTFOLIO ANALYZER ---------------- #
 
 elif page == "Portfolio Analyzer":
 
     import pages.portfolio_analyzer
-
 
 # ---------------- AI CHATBOT ---------------- #
 
@@ -199,7 +251,6 @@ elif page == "AI Chatbot":
 
         st.success(answer)
 
-
 # ---------------- AI FINANCE ADVISOR ---------------- #
 
 elif page == "AI Finance Advisor":
@@ -216,7 +267,6 @@ elif page == "AI Finance Advisor":
 
         st.success(advice)
 
-
 # ---------------- EXPENSE CLASSIFIER ML ---------------- #
 
 elif page == "Expense Classifier ML":
@@ -232,7 +282,6 @@ elif page == "Expense Classifier ML":
         category = predict_category(description)
 
         st.success(f"Predicted Category: {category}")
-
 
 # ---------------- AI FINANCIAL REPORT ---------------- #
 
